@@ -1,0 +1,898 @@
+{
+	"info": {
+		"_postman_id": "cf741a84-017b-47dd-b69b-98641be25a0c",
+		"name": "Security Test Generator",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "API Validation",
+			"item": [
+				{
+					"name": "Validate API In Workspace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "ce0eb858-4436-4e97-81a0-cdd71738cb93",
+								"exec": [
+									"const minApiCount = Number(pm.environment.get('env-minApiCount'));\r",
+									"const maxApiCount = Number(pm.environment.get('env-maxApiCount'));\r",
+									"const jsonData = pm.response.json();\r",
+									"\r",
+									"pm.test(`Workspace API count is between ${minApiCount} and ${maxApiCount}. (Count: ${jsonData.apis.length})`, function () {    \r",
+									"    pm.expect(jsonData.apis.length).to.be.at.least(minApiCount);    \r",
+									"    pm.expect(jsonData.apis.length).to.be.at.most(maxApiCount);\r",
+									"});\r",
+									"\r",
+									"let apiIds = [];\r",
+									"_.forEach(jsonData.apis, function(api){\r",
+									"    apiIds.push(api.id);\r",
+									"});\r",
+									"\r",
+									"pm.collectionVariables.set('coll-apiIds', JSON.stringify(apiIds));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Api-Key",
+								"value": "{{env-apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.getpostman.com/apis?workspace={{env-workspaceId}}",
+							"protocol": "https",
+							"host": [
+								"api",
+								"getpostman",
+								"com"
+							],
+							"path": [
+								"apis"
+							],
+							"query": [
+								{
+									"key": "workspace",
+									"value": "{{env-workspaceId}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current API Version",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0bbeed26-bb61-42ff-91e0-327b39023802",
+								"exec": [
+									"const jsonData = pm.response.json();\r",
+									"\r",
+									"pm.test('API has one or more versions', function(){\r",
+									"    pm.expect(jsonData).to.have.property('versions').and.to.be.an('array');\r",
+									"    pm.expect(jsonData.versions.length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"const version = jsonData.versions[0];\r",
+									"pm.collectionVariables.set('coll-versionId', version.id);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "ac5a804b-ae8b-4509-8675-6f56ba2b75d7",
+								"exec": [
+									"let apiIds = pm.collectionVariables.get('coll-apiIds');\r",
+									"if(apiIds){\r",
+									"    apiIds = JSON.parse(apiIds);\r",
+									"    const apiId = apiIds.pop();\r",
+									"\r",
+									"    pm.collectionVariables.set('coll-apiId', apiId);\r",
+									"    pm.collectionVariables.set('coll-apiIds', JSON.stringify(apiIds));\r",
+									"}\r",
+									"else {\r",
+									"    pm.request.url = 'https://postman-echo.com/delay/0'\r",
+									"    pm.request.name = 'No APIs found in the workspace. Skipping execution';\r",
+									"    postman.setNextRequest(null);\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Api-Key",
+								"value": "{{env-apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.getpostman.com/apis/:apiId/versions",
+							"protocol": "https",
+							"host": [
+								"api",
+								"getpostman",
+								"com"
+							],
+							"path": [
+								"apis",
+								":apiId",
+								"versions"
+							],
+							"query": [
+								{
+									"key": null,
+									"value": "",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "apiId",
+									"value": "{{coll-apiId}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current API Schema",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "e76a78a3-b2d8-42ee-9afd-905bff8c4567",
+								"exec": [
+									"const jsonData = pm.response.json();\r",
+									"\r",
+									"pm.test('Has schema for current version', function(){\r",
+									"    pm.expect(jsonData).to.have.property('version');\r",
+									"    pm.expect(jsonData.version).to.have.property('schema').and.to.be.an('array');\r",
+									"    pm.expect(jsonData.version.schema.length).to.be.above(0);\r",
+									"\r",
+									"    pm.collectionVariables.set('coll-schemaId', jsonData.version.schema[0]);\r",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "29f1f8c4-8ff4-4fe3-8ffc-0f0ee1a01bcb",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Api-Key",
+								"type": "text",
+								"value": "{{env-apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "https://api.getpostman.com/apis/:apiId/versions/:versionId",
+							"protocol": "https",
+							"host": [
+								"api",
+								"getpostman",
+								"com"
+							],
+							"path": [
+								"apis",
+								":apiId",
+								"versions",
+								":versionId"
+							],
+							"query": [
+								{
+									"key": null,
+									"value": "",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "apiId",
+									"value": "{{coll-apiId}}"
+								},
+								{
+									"key": "versionId",
+									"value": "{{coll-versionId}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get API Schema",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "815adc22-30f8-4ee5-b191-b981c91195f3",
+								"exec": [
+									"try {\r",
+									"    const jsonData = pm.response.json();\r",
+									"\r",
+									"    if(jsonData.schema.language.toLowerCase() == 'json'){\r",
+									"        pm.test('Schema is JSON', function(){\r",
+									"            pm.expect(1).to.equal(1);\r",
+									"        });\r",
+									"    }\r",
+									"    else {\r",
+									"        pm.test('Schema translates to JSON', function(){\r",
+									"            try{\r",
+									"                const yaml = pm.environment.get('env-jsonToYaml');\r",
+									"                (new Function(yaml))();\r",
+									"\r",
+									"                const schema = jsyaml.load(jsonData.schema.schema);\r",
+									"                pm.collectionVariables.set('coll-schema', JSON.stringify(schema));\r",
+									"                pm.expect(1).to.equal(1);\r",
+									"            }\r",
+									"            catch(err){\r",
+									"                pm.expect(1).to.equal(0);\r",
+									"            }    \r",
+									"        });\r",
+									"    }\r",
+									"}\r",
+									"catch(err) {\r",
+									"    console.log(err);\r",
+									"    pm.test('Unable to load schema', function(){\r",
+									"        pm.expect(0).to.equal(1);\r",
+									"        postman.setNextRequest(null);\r",
+									"    })\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Api-Key",
+								"value": "{{env-apiKey}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.getpostman.com/apis/:apiId/versions/:apiVersionId/schemas/:schemaId",
+							"protocol": "https",
+							"host": [
+								"api",
+								"getpostman",
+								"com"
+							],
+							"path": [
+								"apis",
+								":apiId",
+								"versions",
+								":apiVersionId",
+								"schemas",
+								":schemaId"
+							],
+							"variable": [
+								{
+									"key": "apiId",
+									"value": "{{coll-apiId}}"
+								},
+								{
+									"key": "apiVersionId",
+									"value": "{{coll-versionId}}"
+								},
+								{
+									"key": "schemaId",
+									"value": "{{coll-schemaId}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Components",
+			"item": [
+				{
+					"name": "Verify Component Adherence",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "af7ddb7e-edfd-4e8e-b52c-3ff5f2de0a74",
+								"exec": [
+									"const schema = JSON.parse(pm.collectionVariables.get('coll-schema'));\r",
+									"\r",
+									"const requireParamDescription = Boolean(pm.environment.get('env-requireParamDescription'));\r",
+									"const requireParamExample = Boolean(pm.environment.get('env-requireParamExample'));\r",
+									"\r",
+									"let paramDescriptionMinLength = pm.environment.get('env-paramDescriptionMinLength');\r",
+									"if(paramDescriptionMinLength){\r",
+									"    paramDescriptionMinLength = Number(paramDescriptionMinLength);\r",
+									"}\r",
+									"\r",
+									"let paramDescriptionMaxLength = pm.environment.get('env-paramDesciptionMaxLength');\r",
+									"if(paramDescriptionMaxLength){\r",
+									"    paramDescriptionMaxLength = Number(paramDescriptionMaxLength);\r",
+									"}\r",
+									"\r",
+									"for(let prop in schema.components.parameters){\r",
+									"    let parameter = schema.components.parameters[prop];\r",
+									"\r",
+									"    pm.test(`Parameter '${prop}' starts with a lowercase letter`, function(){\r",
+									"        pm.expect(prop.charAt(0)).to.equal(prop.charAt(0).toLowerCase());\r",
+									"    });\r",
+									"\r",
+									"    if(requireParamDescription){\r",
+									"        pm.test(`Parameter '${prop}' has a description between ${paramDescriptionMinLength} and ${paramDescriptionMaxLength} characters`, function(){\r",
+									"           pm.expect(parameter).to.have.property('description').and.to.be.a('string');\r",
+									"           pm.expect(parameter.description.length).to.be.at.least(paramDescriptionMinLength);\r",
+									"           pm.expect(parameter.description.length).to.be.at.most(paramDescriptionMaxLength); \r",
+									"        });\r",
+									"    }\r",
+									"\r",
+									"    if(requireParamExample){\r",
+									"        pm.test(`Parameter '${prop}' has an example`, function(){\r",
+									"            pm.expect(parameter).to.have.property('schema');\r",
+									"            pm.expect(parameter.schema).to.have.property('example');\r",
+									"        });\r",
+									"    }\r",
+									"}\r",
+									"\r",
+									"for(let prop in schema.components.schemas){\r",
+									"    pm.test(`Schema '${prop}' begins with an uppercase letter`, function(){\r",
+									"        pm.expect(prop.charAt(0)).to.equal(prop.charAt(0).toUpperCase());\r",
+									"    });\r",
+									"\r",
+									"    const schemaObject = schema.components.schemas[prop];\r",
+									"    testSchemaObject(schema, schemaObject, prop);\r",
+									"}\r",
+									"\r",
+									"for(let prop in schema.components.responses) {\r",
+									"    pm.test(`Response '${prop}' begins with an uppercase letter`, function(){\r",
+									"        pm.expect(prop.charAt(0)).to.equal(prop.charAt(0).toUpperCase());\r",
+									"    });\r",
+									"\r",
+									"    if(requireParamDescription){\r",
+									"        const response = schema.components.responses[prop];\r",
+									"        pm.test(`Response '${prop}' has a description between ${paramDescriptionMinLength} and ${paramDescriptionMaxLength} characters`, function(){\r",
+									"           pm.expect(response).to.have.property('description').and.to.be.a('string');\r",
+									"           pm.expect(response.description.length).to.be.at.least(paramDescriptionMinLength);\r",
+									"           pm.expect(response.description.length).to.be.at.most(paramDescriptionMaxLength); \r",
+									"        });\r",
+									"    }\r",
+									"}\r",
+									"    \r",
+									"function testSchemaObject(schema, object, objectName){\r",
+									"    if(object.type && object.type.toLowerCase() == 'object'){\r",
+									"        pm.test(`Schema '${objectName}' has object properties defined`, function(){\r",
+									"            pm.expect(object).to.have.property('properties');\r",
+									"        });\r",
+									"\r",
+									"        if(object.required){\r",
+									"            for(let i = 0; i < object.required.length; i++){\r",
+									"                const requiredProp = object.required[i];\r",
+									"                pm.test(`Schema '${objectName}' has required property '${requiredProp}' defined`, function(){\r",
+									"                    pm.expect(object.properties).to.have.property(requiredProp);\r",
+									"                });\r",
+									"            }\r",
+									"        }\r",
+									"\r",
+									"        for(let prop in object.properties){\r",
+									"            const property = object.properties[prop];\r",
+									"            pm.test(`Schema property '${objectName}.${prop}' is lowercase`, function(){\r",
+									"                pm.expect(prop.charAt(0)).to.equal(prop.charAt(0).toLowerCase());\r",
+									"            });\r",
+									"            \r",
+									"            if(property.type && property.type.toLowerCase() == 'object'){\r",
+									"                testSchemaObject(schema, property, `${objectName}.${prop}`);\r",
+									"            }\r",
+									"            else if (property.type && property.type.toLowerCase() == 'array'){\r",
+									"                testSchemaObject(schema, property, `${objectName}.${prop}(list)`);\r",
+									"            }\r",
+									"            else {\r",
+									"                if(requireParamDescription){\r",
+									"                    pm.test(`Schema property '${objectName}.${prop}' has a description between ${paramDescriptionMinLength} and ${paramDescriptionMaxLength} characters`, function(){\r",
+									"                    pm.expect(property).to.have.property('description').and.to.be.a('string');\r",
+									"                    pm.expect(property.description.length).to.be.at.least(paramDescriptionMinLength);\r",
+									"                    pm.expect(property.description.length).to.be.at.most(paramDescriptionMaxLength); \r",
+									"                    });\r",
+									"\r",
+									"                    if(property.description){\r",
+									"                        pm.test(`Schema property '${objectName}.${prop}' description is not just the name`, function(){\r",
+									"                            pm.expect(prop.toLowerCase()).to.not.equal(property.description.toLowerCase());\r",
+									"                        });\r",
+									"                    }\r",
+									"                }\r",
+									"\r",
+									"                if(requireParamExample){\r",
+									"                    pm.test(`Schema property '${objectName}.${prop}' has an example`, function(){\r",
+									"                        pm.expect(property).to.have.property('example');\r",
+									"                    });\r",
+									"                }\r",
+									"            }\r",
+									"        }\r",
+									"    } \r",
+									"    else if (object.type && object.type.toLowerCase() == 'array') {\r",
+									"        pm.test(`Schema '${objectName}' has items defined`, function(){\r",
+									"            pm.expect(object).to.have.property('items');\r",
+									"        });\r",
+									"\r",
+									"        testSchemaObject(schema, object.items, `${objectName}.list`);\r",
+									"    } \r",
+									"    else if(object.oneOf) {\r",
+									"        for(let i = 0; i < object.oneOf.length; i++){\r",
+									"            const oneOfSchema = object.oneOf[i];\r",
+									"            if(oneOfSchema.$ref){\r",
+									"                const name = getName(oneOfSchema.$ref);\r",
+									"                testSchemaObject(schema, schema.components.schemas[name], `${objectName}[${i}](ref ${name})`);\r",
+									"            }\r",
+									"            else {\r",
+									"                testSchemaObject(schema, oneOfSchema, `${objectName}[${i}]`);\r",
+									"            }\r",
+									"        }\r",
+									"    } else if(object.allOf){\r",
+									"        for(let i = 0; i < object.allOf.length; i++){\r",
+									"            const allOfSchema = object.allOf[i];\r",
+									"            if(allOfSchema.$ref){\r",
+									"                const name = getName(allOfSchema.$ref);\r",
+									"                testSchemaObject(schema, schema.components.schemas[name], `${objectName}[${i}](ref ${name})`);\r",
+									"            } \r",
+									"            else {\r",
+									"                testSchemaObject(schema, allOfSchema, `${objectName}[${i}]`);\r",
+									"            }\r",
+									"        }\r",
+									"    }\r",
+									"    else {\r",
+									"        pm.test(`Schema '${objectName}' has a declared type`, function(){\r",
+									"            pm.expect(object).to.have.property('type');\r",
+									"        });\r",
+									"    }\r",
+									"}\r",
+									"\r",
+									"function getName(ref){\r",
+									"    let pieces = ref.split('/');\r",
+									"    return pieces[pieces.length-1];\r",
+									"}\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/delay/0",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"delay",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Security",
+			"item": [
+				{
+					"name": "Security Adherence",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fe3e782e-1c99-41b1-92a0-28c17efa3b9b",
+								"exec": [
+									"const schema = JSON.parse(pm.collectionVariables.get('coll-schema'));\r",
+									"let securityPaths = [];\r",
+									"for(let prop in schema.paths){\r",
+									"    let path = schema.paths[prop];\r",
+									"    \r",
+									"    prop = replacePathParameters(schema, prop);\r",
+									"    for(let pathProp in path){\r",
+									"        let pathMethod = path[pathProp];\r",
+									"        if(pathProp.toLowerCase() === 'parameters' || !pathMethod.responses){\r",
+									"            continue;\r",
+									"        }\r",
+									"        const securityExtensionName = pm.environment.get('env-securityExtensionName');\r",
+									"        pm.test(`${pathProp.toUpperCase()} - ${prop} has '${securityExtensionName}' defined`, function(){\r",
+									"            pm.expect(pathMethod).to.have.property(securityExtensionName).and.to.be.an('array');  \r",
+									"\r",
+									"            let testPath = {\r",
+									"            path: prop,\r",
+									"            method: pathProp.toUpperCase(),\r",
+									"            roles: {}\r",
+									"        }\r",
+									"\r",
+									"        const roles = JSON.parse(pm.environment.get('env-roles'));\r",
+									"        for(let index in roles){\r",
+									"            let role = roles[index];\r",
+									"            let allowedRole = pathMethod[securityExtensionName].find(r => r ==role);            \r",
+									"            testPath.roles[role] = (allowedRole !== undefined);\r",
+									"        }\r",
+									"        \r",
+									"        let slashTestPath = _.cloneDeep(testPath);\r",
+									"        slashTestPath.path = slashTestPath.path + \"/\";       \r",
+									"\r",
+									"        let optionsTestPath = _.cloneDeep(testPath);\r",
+									"        optionsTestPath.method = 'OPTIONS';\r",
+									"        for(let index = 0; index < Object.keys(optionsTestPath.roles).length; index++){\r",
+									"            let role = Object.keys(optionsTestPath.roles)[index];\r",
+									"            optionsTestPath.roles[role] = true;\r",
+									"        }\r",
+									"        \r",
+									"        let slashOptionsTestPath = _.cloneDeep(optionsTestPath);\r",
+									"        slashOptionsTestPath.path = slashOptionsTestPath.path + \"/\";\r",
+									"\r",
+									"        securityPaths.push(testPath);\r",
+									"        securityPaths.push(slashTestPath);\r",
+									"        securityPaths.push(optionsTestPath);\r",
+									"        securityPaths.push(slashOptionsTestPath);\r",
+									"        });        \r",
+									"    }\r",
+									"}\r",
+									"\r",
+									"const server = pm.environment.get('env-server');\r",
+									"pm.test('Environment has server to test defined', function(){\r",
+									"    pm.expect(server).to.not.be.undefined;\r",
+									"});\r",
+									"\r",
+									"pm.test('Schema has server/baseUrl defined', function(){\r",
+									"    const servers = schema.servers;\r",
+									"    pm.expect(servers).to.not.be.undefined;\r",
+									"    const serverToTest = servers.find(s => s.description.toLowerCase() == server.toLowerCase());\r",
+									"    pm.expect(serverToTest).to.not.be.undefined;\r",
+									"\r",
+									"    pm.expect(serverToTest).to.have.property('url');\r",
+									"    pm.collectionVariables.set('coll-baseUrl', serverToTest.url);\r",
+									"});\r",
+									"\r",
+									"pm.collectionVariables.set('coll-securityPaths', JSON.stringify(securityPaths));\r",
+									"\r",
+									"function replacePathParameters(schema, pathName){\r",
+									"    let replacedPathName = pathName;\r",
+									"    let pathVariableRegex = /{([^}]*)}/g;\r",
+									"    let matches = pathName.match(pathVariableRegex);\r",
+									"    for(let index in matches){\r",
+									"        let match = matches[index];\r",
+									"        let paramName = match.substring(1, match.length - 1);\r",
+									"        let parameter = schema.components.parameters[paramName];\r",
+									"        \r",
+									"        let parameterValue = encodeURIComponent(parameter.schema.example);\r",
+									"        replacedPathName = pathName.replace(match, parameterValue);        \r",
+									"    }\r",
+									"\r",
+									"    return replacedPathName;\r",
+									"}\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/delay/0",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"delay",
+								"0"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Security Test Execution",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "70a28957-a7c7-48d8-8b45-b4de9ab98316",
+								"exec": [
+									"let currentExecution = pm.collectionVariables.get('coll-currentExecution');\r",
+									"if(currentExecution){\r",
+									"    currentExecution = JSON.parse(currentExecution);\r",
+									"}\r",
+									"else {\r",
+									"    let securityPaths = JSON.parse(pm.collectionVariables.get('coll-securityPaths'));\r",
+									"    currentExecution = securityPaths.pop();\r",
+									"    pm.collectionVariables.set('coll-currentExecution', JSON.stringify(currentExecution));\r",
+									"    pm.collectionVariables.set('coll-securityPaths', JSON.stringify(securityPaths));\r",
+									"}\r",
+									"\r",
+									"if(!currentExecution){\r",
+									"    console.log('No security paths found to test. Skipping execution');\r",
+									"}\r",
+									"else {\r",
+									"    pm.request.method = currentExecution.method;\r",
+									"    pm.request.url = `${pm.collectionVariables.get('coll-baseUrl')}${currentExecution.path}`;\r",
+									"\r",
+									"    let roleIndex = pm.collectionVariables.get('coll-roleIndex');\r",
+									"    if(!roleIndex){\r",
+									"        roleIndex = 0;\r",
+									"    }\r",
+									"\r",
+									"    const role = Object.keys(currentExecution.roles)[roleIndex];\r",
+									"    const roleHeaderName = pm.environment.get('env-roleHeaderName');\r",
+									"    pm.request.headers.upsert({ key: roleHeaderName, value: role });\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "33719f26-e6ef-4381-89c0-87867b6af39b",
+								"exec": [
+									"let currentExecution = JSON.parse(pm.collectionVariables.get('coll-currentExecution'));\r",
+									"if(!currentExecution){\r",
+									"    pm.test('No security test was run', function(){\r",
+									"        pm.expect(0).to.equal(1);\r",
+									"        postman.setNextRequest(null);\r",
+									"    });\r",
+									"}\r",
+									"else {\r",
+									"    let roleIndex = pm.collectionVariables.get('coll-roleIndex');\r",
+									"    if(!roleIndex){\r",
+									"        roleIndex = 0;\r",
+									"    }\r",
+									"\r",
+									"    const role = Object.keys(currentExecution.roles)[roleIndex];\r",
+									"    const isAllowed = currentExecution.roles[role] === true;\r",
+									"\r",
+									"    const testDescription = `${currentExecution.method} - ${currentExecution.path} - ${isAllowed ? 'Allows' : 'Does not allow'} role '${role}'`;\r",
+									"    pm.test(testDescription, function(){\r",
+									"        if(isAllowed){\r",
+									"            pm.response.to.not.have.status(401);\r",
+									"        }\r",
+									"        else {\r",
+									"            pm.response.to.have.status(401);\r",
+									"        }\r",
+									"    });\r",
+									"\r",
+									"    roleIndex = roleIndex + 1;\r",
+									"    if(roleIndex >= Object.keys(currentExecution.roles).length){\r",
+									"        pm.collectionVariables.unset('coll-currentExecution');\r",
+									"        pm.collectionVariables.unset('coll-roleIndex');\r",
+									"        \r",
+									"        let securityPaths = pm.collectionVariables.get('coll-securityPaths');\r",
+									"        if(securityPaths){\r",
+									"            securityPaths = JSON.parse(securityPaths);\r",
+									"            if(securityPaths.length > 0){\r",
+									"                postman.setNextRequest('Security Test Execution');\r",
+									"            }\r",
+									"        }\r",
+									"    }\r",
+									"    else {\r",
+									"        pm.collectionVariables.set('coll-roleIndex', roleIndex);\r",
+									"        postman.setNextRequest('Security Test Execution');\r",
+									"    }\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/delay/0",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"delay",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "oauth2",
+				"oauth2": [
+					{
+						"key": "accessToken",
+						"value": "{{jwtAuthToken}}",
+						"type": "string"
+					},
+					{
+						"key": "tokenType",
+						"value": "Bearer",
+						"type": "string"
+					},
+					{
+						"key": "addTokenTo",
+						"value": "header",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "7588ed97-c8ec-4d09-9bd6-a908c3b3d21f",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "6c6d8654-c744-49d3-970c-e7e056228083",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Finalize",
+			"item": [
+				{
+					"name": "More APIs to Process?",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d4584371-862d-4b30-bc07-1152278797af",
+								"exec": [
+									"let apis = pm.collectionVariables.get('coll-apiIds');\r",
+									"if(apis){\r",
+									"    try{\r",
+									"        apis = JSON.parse(apis);\r",
+									"        if(apis.length > 0){\r",
+									"            postman.setNextRequest('Validate API Version and Schema Presence');\r",
+									"        }\r",
+									"    }\r",
+									"    catch(err){}    \r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/delay/0",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"delay",
+								"0"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "b0d0c9e7-ba66-4042-9fff-31e01184e37e",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "00cbef88-c15d-4e33-bd27-6c9770b13f7e",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "0597c966-bc54-4fca-87bd-fe44c9111b7e",
+			"key": "coll-apiIds",
+			"value": ""
+		},
+		{
+			"id": "1801c6f7-b19d-47a6-9c71-b613606f1057",
+			"key": "coll-apiId",
+			"value": ""
+		},
+		{
+			"id": "a3dfecb5-f4d6-45a0-8bb4-5d9617dae79d",
+			"key": "coll-schemaId",
+			"value": ""
+		},
+		{
+			"id": "7701de7b-16f4-43a9-8d27-802fc8eaa15f",
+			"key": "coll-versionId",
+			"value": ""
+		},
+		{
+			"id": "5e635dbd-ffb9-4ed2-bc41-35f3fcf0561a",
+			"key": "coll-schema",
+			"value": ""
+		},
+		{
+			"id": "36d71037-de1d-4c6f-9db1-212eb00fc826",
+			"key": "jwtAuthToken",
+			"value": ""
+		},
+		{
+			"id": "7694ac73-3ee5-4c10-b3e8-684bdcec0743",
+			"key": "coll-securityPaths",
+			"value": ""
+		},
+		{
+			"id": "d5d60619-0d59-4edd-a7dd-f2efa730f6f4",
+			"key": "coll-baseUrl",
+			"value": ""
+		}
+	],
+	"protocolProfileBehavior": {}
+}
