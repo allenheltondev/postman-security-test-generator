@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "cf741a84-017b-47dd-b69b-98641be25a0c",
+		"_postman_id": "985f8814-bfa0-4633-a0d9-a5a7865063b9",
 		"name": "Security Test Generator",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -8,6 +8,58 @@
 		{
 			"name": "API Validation",
 			"item": [
+				{
+					"name": "Initialize",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fa3863ae-5c79-475c-90b6-910a83c1e10f",
+								"exec": [
+									"const providedSchema = pm.environment.get('env-schema');\r",
+									"if(providedSchema){\r",
+									"    let success = true;\r",
+									"    try{\r",
+									"        const yaml = pm.environment.get('env-jsonToYaml');\r",
+									"        (new Function(yaml))();\r",
+									"\r",
+									"        const schema = jsyaml.load(providedSchema);\r",
+									"        pm.collectionVariables.set('coll-schema', JSON.stringify(schema));\r",
+									"        postman.setNextRequest('Verify Component Adherence');\r",
+									"    }\r",
+									"    catch(err){\r",
+									"        console.log(err);\r",
+									"        success = false;\r",
+									"        postman.setNextRequest(null);\r",
+									"    }\r",
+									"\r",
+									"    pm.test('Successfully converted provided schema', function(){\r",
+									"        pm.expect(success).to.be.true;\r",
+									"    });    \r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/delay/0",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"delay",
+								"0"
+							]
+						}
+					},
+					"response": []
+				},
 				{
 					"name": "Validate API In Workspace",
 					"event": [
@@ -37,6 +89,9 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -111,6 +166,9 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -141,8 +199,10 @@
 							],
 							"variable": [
 								{
+									"id": "1fa0dce6-9237-4658-aff5-14148d38940b",
 									"key": "apiId",
-									"value": "{{coll-apiId}}"
+									"value": "{{coll-apiId}}",
+									"type": "string"
 								}
 							]
 						}
@@ -182,6 +242,9 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -213,12 +276,16 @@
 							],
 							"variable": [
 								{
+									"id": "8e63c49c-7fd4-41d0-826a-e83c8f5f80ac",
 									"key": "apiId",
-									"value": "{{coll-apiId}}"
+									"value": "{{coll-apiId}}",
+									"type": "string"
 								},
 								{
+									"id": "6c123433-f7e2-4505-a6e3-dcc36df79e39",
 									"key": "versionId",
-									"value": "{{coll-versionId}}"
+									"value": "{{coll-versionId}}",
+									"type": "string"
 								}
 							]
 						}
@@ -252,7 +319,7 @@
 									"                pm.expect(1).to.equal(1);\r",
 									"            }\r",
 									"            catch(err){\r",
-									"                pm.expect(1).to.equal(0);\r",
+									"                pm.expect(`${err.name} - ${err.message}`).to.equal(undefined);\r",
 									"            }    \r",
 									"        });\r",
 									"    }\r",
@@ -270,6 +337,9 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -296,16 +366,22 @@
 							],
 							"variable": [
 								{
+									"id": "5fe38f4f-303c-4168-a646-ef4bd05f6132",
 									"key": "apiId",
-									"value": "{{coll-apiId}}"
+									"value": "{{coll-apiId}}",
+									"type": "string"
 								},
 								{
+									"id": "bc17faae-1464-4ac7-b63f-76d937705dcb",
 									"key": "apiVersionId",
-									"value": "{{coll-versionId}}"
+									"value": "{{coll-versionId}}",
+									"type": "string"
 								},
 								{
+									"id": "c225881a-afaf-4ea5-86bd-6ad05fca01d7",
 									"key": "schemaId",
-									"value": "{{coll-schemaId}}"
+									"value": "{{coll-schemaId}}",
+									"type": "string"
 								}
 							]
 						}
@@ -341,6 +417,8 @@
 									"    paramDescriptionMaxLength = Number(paramDescriptionMaxLength);\r",
 									"}\r",
 									"\r",
+									"var testedSchemaRefs = [];\r",
+									"\r",
 									"for(let prop in schema.components.parameters){\r",
 									"    let parameter = schema.components.parameters[prop];\r",
 									"\r",
@@ -369,8 +447,12 @@
 									"        pm.expect(prop.charAt(0)).to.equal(prop.charAt(0).toUpperCase());\r",
 									"    });\r",
 									"\r",
-									"    const schemaObject = schema.components.schemas[prop];\r",
-									"    testSchemaObject(schema, schemaObject, prop);\r",
+									"    const testedSchema = testedSchemaRefs.find(tsr => tsr == prop);\r",
+									"    if(!testedSchema){\r",
+									"        const schemaObject = schema.components.schemas[prop];\r",
+									"        testSchemaObject(schema, schemaObject, prop);\r",
+									"        testedSchemaRefs.push(prop);\r",
+									"    }\r",
 									"}\r",
 									"\r",
 									"for(let prop in schema.components.responses) {\r",
@@ -387,13 +469,24 @@
 									"        });\r",
 									"    }\r",
 									"}\r",
+									"\r",
+									"const server = pm.environment.get('env-server');\r",
+									"pm.test('Environment has test server defined', function(){\r",
+									"    pm.expect(server).to.not.be.undefined;\r",
+									"});\r",
+									"\r",
+									"pm.test('Schema has server/baseUrl defined', function(){\r",
+									"    const servers = schema.servers;\r",
+									"    pm.expect(servers).to.not.be.undefined;\r",
+									"    const serverToTest = servers.find(s => s.description.toLowerCase() == server.toLowerCase());\r",
+									"    pm.expect(serverToTest).to.not.be.undefined;\r",
+									"\r",
+									"    pm.expect(serverToTest).to.have.property('url');\r",
+									"    pm.collectionVariables.set('coll-baseUrl', serverToTest.url);\r",
+									"});\r",
 									"    \r",
 									"function testSchemaObject(schema, object, objectName){\r",
 									"    if(object.type && object.type.toLowerCase() == 'object'){\r",
-									"        pm.test(`Schema '${objectName}' has object properties defined`, function(){\r",
-									"            pm.expect(object).to.have.property('properties');\r",
-									"        });\r",
-									"\r",
 									"        if(object.required){\r",
 									"            for(let i = 0; i < object.required.length; i++){\r",
 									"                const requiredProp = object.required[i];\r",
@@ -415,8 +508,23 @@
 									"            else if (property.type && property.type.toLowerCase() == 'array'){\r",
 									"                testSchemaObject(schema, property, `${objectName}.${prop}(list)`);\r",
 									"            }\r",
+									"            else if(property.oneOf){\r",
+									"                _.forEach(property.oneOf, (oneOf, i) => {\r",
+									"                    testSchemaObject(schema, oneOf, `${objectName}.${prop}(oneOf).${i}`)\r",
+									"                });\r",
+									"            }\r",
+									"            else if (property.allOf){\r",
+									"                _.forEach(property.allOf, (allOf, i) => {\r",
+									"                    testSchemaObject(schema, allOf, `${objectName}.${prop}(allOf).${i}`)\r",
+									"                });\r",
+									"            }\r",
+									"            else if (property.anyOf){\r",
+									"                _.forEach(property.anyOf, (anyOf, i) => {\r",
+									"                    testSchemaObject(schema, anyOf, `${objectName}.${prop}(anyOf).${i}`)\r",
+									"                });\r",
+									"            }\r",
 									"            else {\r",
-									"                if(requireParamDescription){\r",
+									"                if(requireParamDescription && !property.$ref){\r",
 									"                    pm.test(`Schema property '${objectName}.${prop}' has a description between ${paramDescriptionMinLength} and ${paramDescriptionMaxLength} characters`, function(){\r",
 									"                    pm.expect(property).to.have.property('description').and.to.be.a('string');\r",
 									"                    pm.expect(property.description.length).to.be.at.least(paramDescriptionMinLength);\r",
@@ -430,7 +538,7 @@
 									"                    }\r",
 									"                }\r",
 									"\r",
-									"                if(requireParamExample){\r",
+									"                if(requireParamExample && !property.$ref){\r",
 									"                    pm.test(`Schema property '${objectName}.${prop}' has an example`, function(){\r",
 									"                        pm.expect(property).to.have.property('example');\r",
 									"                    });\r",
@@ -446,32 +554,42 @@
 									"        testSchemaObject(schema, object.items, `${objectName}.list`);\r",
 									"    } \r",
 									"    else if(object.oneOf) {\r",
-									"        for(let i = 0; i < object.oneOf.length; i++){\r",
-									"            const oneOfSchema = object.oneOf[i];\r",
-									"            if(oneOfSchema.$ref){\r",
-									"                const name = getName(oneOfSchema.$ref);\r",
-									"                testSchemaObject(schema, schema.components.schemas[name], `${objectName}[${i}](ref ${name})`);\r",
-									"            }\r",
-									"            else {\r",
-									"                testSchemaObject(schema, oneOfSchema, `${objectName}[${i}]`);\r",
-									"            }\r",
-									"        }\r",
+									"        handleSchemaArray(schema, object, objectName, 'oneOf');        \r",
 									"    } else if(object.allOf){\r",
-									"        for(let i = 0; i < object.allOf.length; i++){\r",
-									"            const allOfSchema = object.allOf[i];\r",
-									"            if(allOfSchema.$ref){\r",
-									"                const name = getName(allOfSchema.$ref);\r",
-									"                testSchemaObject(schema, schema.components.schemas[name], `${objectName}[${i}](ref ${name})`);\r",
-									"            } \r",
-									"            else {\r",
-									"                testSchemaObject(schema, allOfSchema, `${objectName}[${i}]`);\r",
-									"            }\r",
+									"        handleSchemaArray(schema, object, objectName, 'allOf');       \r",
+									"    }\r",
+									"    else if(object.anyOf){\r",
+									"        handleSchemaArray(schema, object, objectName, 'anyOf');\r",
+									"    }\r",
+									"    else if(object.$ref){\r",
+									"        const name = getName(object.$ref);\r",
+									"        const testedRef = testedSchemaRefs.find(tsr => tsr == name);\r",
+									"        if(!testedRef){            \r",
+									"            testSchemaObject(schema, schema.components.schemas[name], objectName);\r",
+									"            testedSchemaRefs.push(name);\r",
 									"        }\r",
 									"    }\r",
 									"    else {\r",
 									"        pm.test(`Schema '${objectName}' has a declared type`, function(){\r",
 									"            pm.expect(object).to.have.property('type');\r",
 									"        });\r",
+									"    }\r",
+									"}\r",
+									"\r",
+									"function handleSchemaArray(schema, object, objectName, arrayType){\r",
+									"    for(let i = 0; i < object[arrayType].length; i++){\r",
+									"        const arraySchema = object[arrayType][i];\r",
+									"        if(arraySchema.$ref){\r",
+									"            const name = getName(arraySchema.$ref);\r",
+									"            const testedRef = testedSchemaRefs.find(tsr => tsr == name);\r",
+									"            if(!testedRef){\r",
+									"                testSchemaObject(schema, schema.components.schemas[name], `${objectName}[${i}](ref ${name})`);\r",
+									"                testedSchemaRefs.push(name);\r",
+									"            }\r",
+									"        } \r",
+									"        else {\r",
+									"            testSchemaObject(schema, arraySchema, `${objectName}[${i}]`);\r",
+									"        }\r",
 									"    }\r",
 									"}\r",
 									"\r",
@@ -486,6 +604,9 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -507,7 +628,7 @@
 			"protocolProfileBehavior": {}
 		},
 		{
-			"name": "Security",
+			"name": "Security Tests",
 			"item": [
 				{
 					"name": "Security Adherence",
@@ -537,14 +658,13 @@
 									"            method: pathProp.toUpperCase(),\r",
 									"            roles: {}\r",
 									"        }\r",
-									"\r",
+									"        \r",
 									"        const roles = JSON.parse(pm.environment.get('env-roles'));\r",
 									"        for(let index in roles){\r",
 									"            let role = roles[index];\r",
 									"            let allowedRole = pathMethod[securityExtensionName].find(r => r ==role);            \r",
 									"            testPath.roles[role] = (allowedRole !== undefined);\r",
 									"        }\r",
-									"        \r",
 									"        let slashTestPath = _.cloneDeep(testPath);\r",
 									"        slashTestPath.path = slashTestPath.path + \"/\";       \r",
 									"\r",
@@ -554,7 +674,7 @@
 									"            let role = Object.keys(optionsTestPath.roles)[index];\r",
 									"            optionsTestPath.roles[role] = true;\r",
 									"        }\r",
-									"        \r",
+									"\r",
 									"        let slashOptionsTestPath = _.cloneDeep(optionsTestPath);\r",
 									"        slashOptionsTestPath.path = slashOptionsTestPath.path + \"/\";\r",
 									"\r",
@@ -566,40 +686,24 @@
 									"    }\r",
 									"}\r",
 									"\r",
-									"const server = pm.environment.get('env-server');\r",
-									"pm.test('Environment has server to test defined', function(){\r",
-									"    pm.expect(server).to.not.be.undefined;\r",
-									"});\r",
-									"\r",
-									"pm.test('Schema has server/baseUrl defined', function(){\r",
-									"    const servers = schema.servers;\r",
-									"    pm.expect(servers).to.not.be.undefined;\r",
-									"    const serverToTest = servers.find(s => s.description.toLowerCase() == server.toLowerCase());\r",
-									"    pm.expect(serverToTest).to.not.be.undefined;\r",
-									"\r",
-									"    pm.expect(serverToTest).to.have.property('url');\r",
-									"    pm.collectionVariables.set('coll-baseUrl', serverToTest.url);\r",
-									"});\r",
-									"\r",
 									"pm.collectionVariables.set('coll-securityPaths', JSON.stringify(securityPaths));\r",
 									"\r",
 									"function replacePathParameters(schema, pathName){\r",
 									"    let replacedPathName = pathName;\r",
 									"    let pathVariableRegex = /{([^}]*)}/g;\r",
 									"    let matches = pathName.match(pathVariableRegex);\r",
-									"    for(let index in matches){\r",
+									"    for(let index in matches){        \r",
 									"        let match = matches[index];\r",
+									"        \r",
 									"        let paramName = match.substring(1, match.length - 1);\r",
 									"        let parameter = schema.components.parameters[paramName];\r",
 									"        \r",
 									"        let parameterValue = encodeURIComponent(parameter.schema.example);\r",
-									"        replacedPathName = pathName.replace(match, parameterValue);        \r",
+									"        replacedPathName = replacedPathName.replace(match, parameterValue);                \r",
 									"    }\r",
 									"\r",
 									"    return replacedPathName;\r",
-									"}\r",
-									"\r",
-									""
+									"}"
 								],
 								"type": "text/javascript"
 							}
@@ -809,6 +913,9 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "noauth"
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
@@ -854,42 +961,37 @@
 	],
 	"variable": [
 		{
-			"id": "0597c966-bc54-4fca-87bd-fe44c9111b7e",
+			"id": "e13c5f64-35fb-42aa-a18c-9cf08d14036e",
 			"key": "coll-apiIds",
-			"value": ""
+			"value": "[]"
 		},
 		{
-			"id": "1801c6f7-b19d-47a6-9c71-b613606f1057",
+			"id": "65845885-bdea-4f68-b7fd-26092afedf8f",
 			"key": "coll-apiId",
 			"value": ""
 		},
 		{
-			"id": "a3dfecb5-f4d6-45a0-8bb4-5d9617dae79d",
+			"id": "c75a2ac2-ceff-4091-86e6-767bf9978ab6",
 			"key": "coll-schemaId",
 			"value": ""
 		},
 		{
-			"id": "7701de7b-16f4-43a9-8d27-802fc8eaa15f",
+			"id": "9f370823-9c66-40d8-a88e-b22990c2d1be",
 			"key": "coll-versionId",
 			"value": ""
 		},
 		{
-			"id": "5e635dbd-ffb9-4ed2-bc41-35f3fcf0561a",
+			"id": "58f59908-52c7-4f97-aa5a-39a3103f0fa4",
 			"key": "coll-schema",
 			"value": ""
 		},
 		{
-			"id": "36d71037-de1d-4c6f-9db1-212eb00fc826",
-			"key": "jwtAuthToken",
-			"value": ""
-		},
-		{
-			"id": "7694ac73-3ee5-4c10-b3e8-684bdcec0743",
+			"id": "3e25e01f-affb-47ba-9ecf-82055fcaf68f",
 			"key": "coll-securityPaths",
-			"value": ""
+			"value": "[]"
 		},
 		{
-			"id": "d5d60619-0d59-4edd-a7dd-f2efa730f6f4",
+			"id": "3d93cb51-c77a-4ad5-a37b-f5166bcf042d",
 			"key": "coll-baseUrl",
 			"value": ""
 		}
